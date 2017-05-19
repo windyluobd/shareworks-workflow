@@ -21,13 +21,11 @@ function shareworksWorkFlow(options) {
 	var showEditNode = options.showEditNode;
 	//defiend display node
 	var displayNode = options.displayNode;
-	//init flow data
-	var flowData = {};
 	//init gojs
 	var s = gojs.GraphObject.make;
 	//init diagram
 	var myDiagram = s(gojs.Diagram, diagramId, {
-		initialContentAlignment: gojs.Spot.Center,
+		initialContentAlignment: gojs.Spot.MiddleTop,
 		allowDrop: true
 	});
 	//init node template add
@@ -156,19 +154,18 @@ function shareworksWorkFlow(options) {
 	//初始化双击操作
 	myDiagram.addDiagramListener("ObjectDoubleClicked", function(ev) {
 		var part = ev.subject.part;
-		var nodeHashId = part.__gohashid;
-		if (!flowData[nodeHashId]) {
-			flowData[nodeHashId] = {};
+		if (!part.data.customData) {
+			var initData = {};
 			for (var key in initNodeData) {
-				flowData[nodeHashId][key] = initNodeData[key];
+				initData[key] = initNodeData[key];
 			}
+			part.data.customData = initData;
 		}
-		showEditNode(part, flowData[nodeHashId]);
+		showEditNode(part, part.data.customData);
 	});
 	return {
 		saveNodeData: function(node, data) {
-			var nodeHashId = node.__gohashid;
-			flowData[nodeHashId] = data;
+			node.data.customData = data;
 			var textStr = displayNode(data);
 			myDiagram.startTransaction("vacate");
 			myDiagram.model.setDataProperty(node.data, "text", textStr);
@@ -177,27 +174,27 @@ function shareworksWorkFlow(options) {
 		getDiagramData: function() {
 			var modelJsonStr = myDiagram.model.toJson();
 			var modelJsonData = JSON.parse(modelJsonStr);
-			var nodeDataArray = modelJsonData.nodeDataArray;
-			var nodeLength = nodeDataArray.length;
-			var finalDataArray = [];
-			if (nodeLength > 0) {
-				for (var idx = 0; idx < nodeLength; idx++) {
-					var nodeData = nodeDataArray[idx];
-					var key = nodeData.key;
-					var nodeObj = myDiagram.model.findNodeDataForKey(key);
-					var nodeHashId = nodeObj.__gohashid + 1;
-					nodeData.customData = flowData[nodeHashId];
-					finalDataArray.push(nodeData);
-				}
-			}
 			return {
-				nodeDataArray: nodeDataArray,
-				linkDataArray: modelJsonData.linkDataArray,
-				jsonStr: modelJsonStr
+				nodeDataArray: modelJsonData.nodeDataArray,
+				linkDataArray: modelJsonData.linkDataArray
 			};
 		},
 		renderDiagram: function(data) {
-			return data;
+			if (!data) {
+				return;
+			}
+			if (!data.nodeDataArray) {
+				return;
+			}
+			if (data.nodeDataArray.length === 0) {
+				return;
+			}
+			var modeJsonData = {
+				"class": "go.GraphLinksModel"
+			};
+			modeJsonData.nodeDataArray = data.nodeDataArray;
+			modeJsonData.linkDataArray = data.linkDataArray;
+			myDiagram.model = gojs.Model.fromJson(data);
 		}
 	};
 }
