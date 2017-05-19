@@ -1,4 +1,5 @@
-function shareworksWorkFlow(gojs, options) {
+import gojs from 'gojs';
+function shareworksWorkFlow(options) {
 	if (typeof(options) != "object") {
 		return null;
 	}
@@ -201,10 +202,10 @@ function shareworksWorkFlow(gojs, options) {
 	};
 }
 
-define(["gojs"], function(gojs) {
+define([], function() {
 	return {
 		createDiagram: function(_options) {
-			return new shareworksWorkFlow(gojs, _options);
+			return new shareworksWorkFlow(_options);
 		}
 	};
 });
