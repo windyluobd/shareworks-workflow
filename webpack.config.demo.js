@@ -1,16 +1,19 @@
 module.exports = {
     entry: {
-		"main": __dirname + "/src/main.js"
+		"index": __dirname + "/src/index.js"
 	},
     output: {
-        path: __dirname + "/dist",
+        path: __dirname + "/demo",
         filename: "[name].js"
     },
     module: {
         loaders: [
             {
                 test: /\.js$/,
-				exclude: /node_modules/,
+				exclude: [
+					/node_modules/,
+					/dist/
+				],
                 loader: 'babel-loader',
 				query: {presets: ['es2015']}
             },
@@ -22,7 +25,10 @@ module.exports = {
         rules: [
             {
                 test: /\.js$/,
-                exclude: /node_modules/,
+                exclude: [
+					/node_modules/,
+					/dist/
+				],
                 loader: 'jshint-loader',
                 options: {
                     camelcase: true,
@@ -39,8 +45,7 @@ module.exports = {
                     devel:true,
                     evil: true,
                     validthis: true,
-                    browser: true,
-                    jquery: true
+                    browser: true
                 }
             }
         ]

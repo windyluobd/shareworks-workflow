@@ -1,13 +1,14 @@
 {
   "name": "shareworks-workflow",
-  "version": "3.0.1",
+  "version": "4.0.1",
   "description": "",
   "files": [
 	"dist/main.js"
   ],
   "main": "dist/main.js",
   "scripts": {
-    "build": "webpack -p --progress"
+    "build": "webpack -p --progress --config webpack.config.prod.js",
+    "demo": "webpack -p --config webpack.config.demo.js"
   },
   "keywords": [],
   "author": "",
