@@ -148,22 +148,29 @@ function shareworksWorkFlow(options) {
 		];
 	}
 
-	function checkData(nodeDataArray) {
+	function checkData(nodeDataArray, linkDataArray) {
 		var code = 0;
 		var message = ""; 
 		if (nodeDataArray.length === 0) {
 			code = 1;
-			message = "Please add node";
+			message = "请添加节点";
 		}
 		var startCount = 0;
 		var endCount = 0;
 		var nodeCount = 0;
+		var startNodeKey = 0;
+		var endNodeKey = 0;
+		var allNodeKey = [];
 		for (var idx = 0, len = nodeDataArray.length; idx < len; idx++) {
 			var node = nodeDataArray[idx];
+			var nodeKey = node.key;
+			allNodeKey.push(nodeKey);
 			if (node.category == "start") {
 				startCount++;
+				startNodeKey = nodeKey;
 			} else if (node.category == "end") {
 				endCount++;
+				endNodeKey = nodeKey;
 			} else if (node.category == "node") {
 				nodeCount++;
 			}
@@ -171,31 +178,94 @@ function shareworksWorkFlow(options) {
 		if (startCount === 0) {
 			return {
 				code: 2,
-				message: "Please add a start node"
+				message: "必须添加一个开始节点"
 			};
 		}
 		if (startCount > 1) {
 			return {
 				code: 3,
-				message: "Only have a start node"
+				message: "只能包含一个开始节点"
 			};
 		}
 		if (endCount === 0) {
 			return {
 				code: 4,
-				message: "Please add an end node"
+				message: "必须添加一个结束节点"
 			};
 		}
 		if (endCount > 1) {
 			return {
 				code: 5,
-				message: "Only have an end node"
+				message: "只能包含一个结束节点"
 			};
 		}
 		if (nodeCount === 0) {
 			return {
 				code: 6,
-				message: "Please add process node"
+				message: "必须添加一个流程节点"
+			};
+		}
+		//构造路径树
+		var pathTree = {};
+		for (var i in linkDataArray) {
+			var entity = linkDataArray[i];
+			var from = entity.from;
+			var to = entity.to;
+			if (!pathTree[from]) {
+				pathTree[from] = [];
+			}
+			pathTree[from].push(to);
+		}
+		//获取所有路径
+		var finalAllPaths = [];
+		var finalAllKeys = [];
+		createPath(startNodeKey, pathTree, startNodeKey, finalAllPaths, finalAllKeys);
+		//判断是否路径都是由开始节点发出
+		var checkTag = true;
+		for (var key in pathTree) {
+			if (finalAllKeys.indexOf(parseInt(key)) < 0) {
+				checkTag = false;
+				break;
+			}
+		}
+		if (!checkTag) {
+			return {
+				code: 7,
+				message: "所有路径必须从开始节点发出"
+			};
+		}
+		//判断所有路径是否以结束节点为终止
+		checkTag = true;
+		for (var j in finalAllPaths) {
+			var path = finalAllPaths[j];
+			var end = parseInt(path.slice(path.lastIndexOf(",") + 1));
+			if (end !== endNodeKey) {
+				checkTag = false;
+				break;
+			}
+		}
+		if (!checkTag) {
+			return {
+				code: 8,
+				message: "所有路径必须以结束节点结束"
+			};
+		}
+		//判断所有路径是否合法
+		var pathArray = [];
+		for (var k in finalAllPaths) {
+			pathArray.push(finalAllPaths[k].split(","));
+		}
+		if (!checkPath(pathArray)) {
+			return {
+				code: 9,
+				message: "非法路径"
+			};
+		}
+		//判断是否所有节点都在路径里
+		if (!isContained(allNodeKey, finalAllKeys)) {
+			return {
+				code: 10,
+				message: "节点必须存在于一条路径中"
 			};
 		}
 		return null;
@@ -227,6 +297,48 @@ function shareworksWorkFlow(options) {
 		node.ports.each(function(port) {
 			port.stroke = (show ? "white" : null);
 		});
+	}
+	// 构造路径
+	function createPath(key, pathTree, path, allPaths, allKeys) {
+		if (allKeys.indexOf(key)  < 0) {
+			allKeys.push(key);
+		}
+		var toArr = pathTree[key];
+		if (!toArr) {
+			allPaths.push(path);
+			return;
+		}
+		for (var idx in toArr) {
+			var toKey = toArr[idx];
+			var newPath = path + "," + toKey;
+			createPath(toKey, pathTree, newPath, allPaths, allKeys);
+		}
+	}
+	// 检查路径
+	function checkPath(cheakPaths) {
+		for (var i in cheakPaths) {
+			var itemArr = cheakPaths[i];
+			for (var j in cheakPaths) {
+				if (i !== j) {
+					if (isContained(itemArr, cheakPaths[j])) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+	// 判断数组是否被包含
+	function isContained(arr1, arr2) {
+		var tag = true;
+		for (var idx in arr1) {
+			var item = arr1[idx];
+			if (arr2.indexOf(item) < 0) {
+				tag = false;
+				break;
+			}
+		}
+		return tag;
 	}
 
 	myDiagram.linkTemplate = s(
@@ -296,7 +408,7 @@ function shareworksWorkFlow(options) {
 		getDiagramData: function() {
 			var modelJsonStr = myDiagram.model.toJson();
 			var modelJsonData = JSON.parse(modelJsonStr);
-			var checkInfo = checkData(modelJsonData.nodeDataArray);
+			var checkInfo = checkData(modelJsonData.nodeDataArray, modelJsonData.linkDataArray);
 			if (checkInfo) {
 				return checkInfo;
 			}
