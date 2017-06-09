@@ -3,23 +3,64 @@ var myDiagram = shareworksDiagram.createDiagram({
 	diagram: "myDiagramDiv",
 	palette: {
 		id: "myPaletteDiv",
-		node: {
-			backgroundColor: "lightyellow",
-			font: "bold 11pt",
-			color: ["lightgreen", "lightblue"],
-			label: "流程节点"
+		lineStyle: {
+			color: '#F2F0FA',
+			size: 2,
+			portColor: '#f7dede'
 		},
 		start: {
-			backgroundColor: "green",
-			font: "bold 11pt",
-			color: ["lightgreen", "lightblue"],
-			label: "开始"
+			backgroundColor: '#FFFFFF',
+			title: {
+				font: 'bold 14px Source Han Sans CN',
+				color: '#222127',
+				underLineColor: '#F2F0FA'
+			},
+			node: {
+				boldSize: 3,
+				boldColor: '#F2F0FA'
+			},
+			content: {
+				color: '#9692AE',
+				margin: 5,
+				font: '13px Source Han Sans CN'
+			},
+			label: '开始'
+		},
+		node: {
+			backgroundColor: '#FFFFFF',
+			title: {
+				font: 'bold 14px Source Han Sans CN',
+				color: '#222127',
+				underLineColor: '#F2F0FA'
+			},
+			node: {
+				boldSize: 3,
+				boldColor: '#F2F0FA'
+			},
+			content: {
+				color: '#9692AE',
+				margin: 5,
+				font: '13px Source Han Sans CN'
+			},
+			label: '流程节点'
 		},
 		end: {
-			backgroundColor: "red",
-			font: "bold 11pt",
-			color: ["lightgreen", "lightblue"],
-			label: "结束"
+			backgroundColor: '#FFFFFF',
+			title: {
+				font: 'bold 14px Source Han Sans CN',
+				color: '#222127',
+				underLineColor: '#F2F0FA'
+			},
+			node: {
+				boldSize: 3,
+				boldColor: '#F2F0FA'
+			},
+			content: {
+				color: '#9692AE',
+				margin: 5,
+				font: '13px Source Han Sans CN'
+			},
+			label: '结束'
 		}
 	},
 	initNodeData: {

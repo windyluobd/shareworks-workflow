@@ -42,16 +42,18 @@ function shareworksWorkFlow(options) {
 			"bottom": [false, false]
 		}
 	};
-
+	var lineStyle = paletteInfo.lineStyle;
 	delete paletteInfo.id;
+	delete paletteInfo.lineStyle;
 	var modeList = [];
 	for (var category in paletteInfo) {
 		var paletteItemBackgroundColor = paletteInfo[category].backgroundColor ? paletteInfo[category].backgroundColor : "#00A9C9";
-		var paletteItemFont = paletteInfo[category].font ? paletteInfo[category].font : "bold 12pt sans-serif";
+		var paletteItemTitleStyle = paletteInfo[category].title;
+		var paletteItemNodeStyle = paletteInfo[category].node;
+		var paletteItemContentStyle = paletteInfo[category].content;
+		// var paletteItemColorCount = paletteInfo[category].length;
 		var paletteItemLabel = paletteInfo[category].label ? paletteInfo[category].label : "";
 		var paletteItemInfo = paletteInfo[category].info ?  paletteInfo[category].info : [];
-		var paletteItemColor = paletteInfo[category].color ?  paletteInfo[category].color : ["lightgreen", "lightblue"];
-		var paletteItemColorCount = paletteItemColor.length;
 		modeList.push({
 			label: paletteItemLabel, 
 			info: paletteItemInfo, 
@@ -70,12 +72,14 @@ function shareworksWorkFlow(options) {
 						gojs.Shape, 
 						"RoundedRectangle",
 						{ 
-							fill: paletteItemBackgroundColor
+							fill: paletteItemBackgroundColor,
+							strokeWidth: paletteItemNodeStyle.boldSize,
+							stroke: paletteItemNodeStyle.boldColor
 						}
 					),
 					s(gojs.Panel, "Table",
 						{ 
-							defaultRowSeparatorStroke: "black"
+							defaultRowSeparatorStroke: paletteItemTitleStyle.underLineColor
 						},
 						// header
 						s(
@@ -85,8 +89,9 @@ function shareworksWorkFlow(options) {
 								columnSpan: 2, 
 								margin: 3, 
 								alignment: gojs.Spot.Center,
-								font: paletteItemFont,
+								font: paletteItemTitleStyle.font,
 								isMultiline: false,
+								stroke: paletteItemTitleStyle.color
 							},
 							new gojs.Binding("text", "label").makeTwoWay()
 						),
@@ -95,27 +100,24 @@ function shareworksWorkFlow(options) {
 							"Vertical",
 							new gojs.Binding("itemArray", "info"),
 							{
-								row: 1, 
-								margin: 3, 
-								stretch: gojs.GraphObject.Fill,
-								defaultAlignment: gojs.Spot.Left, 
-								background: "lightyellow",
+								row: 1,
+								background: paletteItemBackgroundColor,
 								itemTemplate: s(
 									gojs.Panel,
 									"Vertical",
-									new gojs.Binding("background", "itemIndex",
-										function(i) { 
-											var colorIdx = i % paletteItemColorCount;
-											return paletteItemColor[colorIdx]; 
-										}
-									).ofObject(),
 									s(
 										gojs.TextBlock,
+										{
+											stroke: paletteItemContentStyle.color,
+											font: paletteItemContentStyle.font,
+											textAlign: "left"
+										},
 										new gojs.Binding("text", "").makeTwoWay()
 									),
 									{
-										margin: 2,
-										stretch: gojs.GraphObject.Fill
+										stretch: gojs.GraphObject.Fill,
+										defaultAlignment: gojs.Spot.Left,
+										margin: paletteItemContentStyle.margin
 									}
 								)
 							}
@@ -295,7 +297,8 @@ function shareworksWorkFlow(options) {
 			return;
 		}
 		node.ports.each(function(port) {
-			port.stroke = (show ? "white" : null);
+			port.fill = (show ? lineStyle.portColor : "transparent");
+			port.stroke = (show ? lineStyle.portColor : null);
 		});
 	}
 	// 构造路径
@@ -359,7 +362,7 @@ function shareworksWorkFlow(options) {
 			gojs.Shape,
 			{ 
 				isPanelMain: true, 
-				strokeWidth: 8, 
+				strokeWidth: lineStyle.size * 2, 
 				stroke: "transparent", 
 				name: "HIGHLIGHT" 
 			}
@@ -368,16 +371,17 @@ function shareworksWorkFlow(options) {
 			gojs.Shape,
 			{
 				isPanelMain: true, 
-				stroke: "gray", 
-				strokeWidth: 2 
+				stroke: lineStyle.color, 
+				strokeWidth: lineStyle.size 
 			}
 		),
 		s(
 			gojs.Shape,
 			{
 				toArrow: "standard", 
-				stroke: null, 
-				fill: "gray"
+				stroke: lineStyle.color,
+				strokeWidth: lineStyle.size,
+				fill: lineStyle.color
 			}
 		)
 	);
