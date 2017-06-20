@@ -1,8 +1,15 @@
 import gojs from 'gojs';
+var icons = {
+	"cog": "M29.181 19.070c-1.679-2.908-0.669-6.634 2.255-8.328l-3.145-5.447c-0.898 0.527-1.943 0.829-3.058 0.829-3.361 0-6.085-2.742-6.085-6.125h-6.289c0.008 1.044-0.252 2.103-0.811 3.070-1.679 2.908-5.411 3.897-8.339 2.211l-3.144 5.447c0.905 0.515 1.689 1.268 2.246 2.234 1.676 2.903 0.672 6.623-2.241 8.319l3.145 5.447c0.895-0.522 1.935-0.82 3.044-0.82 3.35 0 6.067 2.725 6.084 6.092h6.289c-0.003-1.034 0.259-2.080 0.811-3.038 1.676-2.903 5.399-3.894 8.325-2.219l3.145-5.447c-0.899-0.515-1.678-1.266-2.232-2.226zM16 22.479c-3.578 0-6.479-2.901-6.479-6.479s2.901-6.479 6.479-6.479c3.578 0 6.479 2.901 6.479 6.479s-2.901 6.479-6.479 6.479z",
+	"remove": "M6 32h20l2-22h-24zM20 4v-4h-8v4h-10v6l2-2h24l2 2v-6h-10zM18 4h-4v-2h4v2z",
+	"plus": "M31 12h-11v-11c0-0.552-0.448-1-1-1h-6c-0.552 0-1 0.448-1 1v11h-11c-0.552 0-1 0.448-1 1v6c0 0.552 0.448 1 1 1h11v11c0 0.552 0.448 1 1 1h6c0.552 0 1-0.448 1-1v-11h11c0.552 0 1-0.448 1-1v-6c0-0.552-0.448-1-1-1z"
+};
+
 function shareworksWorkFlow(options) {
 	if (typeof(options) != "object") {
 		return null;
 	}
+	var nodeKey = -1;
 	//init diagram id
 	var diagramId = options.diagram;
 	//init palette info
@@ -14,15 +21,25 @@ function shareworksWorkFlow(options) {
 	var showEditNode = options.showEditNode;
 	//defiend display node
 	var displayNode = options.displayNode;
+	//show add node
+	var showAddNode = options.showAddNode;
+	//show delete node
+	var showRemoveNode = options.showRemoveNode;
 	//init gojs
 	var s = gojs.GraphObject.make;
 	//init diagram
 	var myDiagram = s(gojs.Diagram, diagramId, {
 		initialContentAlignment: gojs.Spot.MiddleTop,
-		allowDrop: true
+		initialAutoScale: gojs.Diagram.Uniform,
+		allowDrop: false,
+		allowCopy: false,
+		allowDelete: false,
+		allowMove: false,
+		allowZoom: false,
+		layout: s(gojs.LayeredDigraphLayout, {direction: 90, layerSpacing: 50, setsPortSpots: false})
 	});
 
-	var categoryPorts = {
+	/*var categoryPorts = {
 		"node": {
 			"top": [false, true],
 			"left": [true, true],
@@ -41,7 +58,7 @@ function shareworksWorkFlow(options) {
 			"right": [false, true],
 			"bottom": [false, false]
 		}
-	};
+	};*/
 	var lineStyle = paletteInfo.lineStyle;
 	delete paletteInfo.id;
 	delete paletteInfo.lineStyle;
@@ -63,6 +80,9 @@ function shareworksWorkFlow(options) {
 		myDiagram.nodeTemplateMap.add(category,
 			s(
 				gojs.Node, 
+				{
+					selectable: false
+				},
 				"Spot", 
 				nodeStyle(),
 				s(
@@ -77,15 +97,65 @@ function shareworksWorkFlow(options) {
 							stroke: paletteItemNodeStyle.boldColor
 						}
 					),
-					s(gojs.Panel, "Table",
-						{ 
-							defaultRowSeparatorStroke: paletteItemTitleStyle.underLineColor
-						},
+					s(
+						gojs.Panel, 
+						"Table",
+						s(gojs.RowColumnDefinition, { row: 0, separatorStroke: "white" }),
+						s(gojs.RowColumnDefinition, { row: 1, separatorStroke: "white" }),
+						s(gojs.RowColumnDefinition, { row: 2, separatorStroke: paletteItemTitleStyle.underLineColor }),
+						// toolbar
+						s(
+							gojs.Panel, 
+							"Auto",
+							{
+								click: buttonSetNode,
+								alignment: gojs.Spot.MiddleRight,
+								row: 0,
+								cursor: "pointer"
+							},
+							s(
+								gojs.Shape,
+								{ 
+									strokeWidth: 1,
+									stroke: "#888",
+									geometry: gojs.Geometry.parse(icons.cog),
+									width: 13,
+									height: 13
+								}
+							),
+							new gojs.Binding("margin", "category", function(val) { 
+								if (val == "node") {
+									return new gojs.Margin(0, 15, 0, 0);
+								}
+							})
+						),
+						s(
+							gojs.Panel, 
+							"Auto",
+							{
+								click: buttonRemoveNode,
+								alignment: gojs.Spot.MiddleRight,
+								row: 0,
+								cursor: "pointer"
+							},
+							s(
+								gojs.Shape,
+								{
+									strokeWidth: 1,
+									stroke: "#888",
+									geometry: gojs.Geometry.parse(icons.remove),
+									width: 13,
+									height: 13
+								},
+								new gojs.Binding("visible", "category", function(val) { return val == "node"; })
+							)
+						),
+						
 						// header
 						s(
 							gojs.TextBlock,
 							{
-								row: 0, 
+								row: 1, 
 								columnSpan: 2, 
 								margin: 3, 
 								alignment: gojs.Spot.Center,
@@ -100,7 +170,7 @@ function shareworksWorkFlow(options) {
 							"Vertical",
 							new gojs.Binding("itemArray", "info"),
 							{
-								row: 1,
+								row: 2,
 								background: paletteItemBackgroundColor,
 								itemTemplate: s(
 									gojs.Panel,
@@ -123,11 +193,11 @@ function shareworksWorkFlow(options) {
 							}
 						)
 					)
-				),
-				makePort("T", gojs.Spot.Top, categoryPorts[category].top[0], categoryPorts[category].top[1]),
-				makePort("L", gojs.Spot.Left, categoryPorts[category].left[0], categoryPorts[category].left[1]),
-				makePort("R", gojs.Spot.Right, categoryPorts[category].right[0], categoryPorts[category].right[1]),
-				makePort("B", gojs.Spot.Bottom, categoryPorts[category].bottom[0], categoryPorts[category].bottom[1])
+				)
+				// makePort("T", gojs.Spot.Top, categoryPorts[category].top[0], categoryPorts[category].top[1]),
+				// makePort("L", gojs.Spot.Left, categoryPorts[category].left[0], categoryPorts[category].left[1]),
+				// makePort("R", gojs.Spot.Right, categoryPorts[category].right[0], categoryPorts[category].right[1]),
+				// makePort("B", gojs.Spot.Bottom, categoryPorts[category].bottom[0], categoryPorts[category].bottom[1])
 			)
 		);
 	}
@@ -139,13 +209,13 @@ function shareworksWorkFlow(options) {
 		nodeTemplateMap: myDiagram.nodeTemplateMap,
 		model: new gojs.GraphLinksModel(modeList)
 	});
+
+	//node style
 	function nodeStyle() {
 		return [
 			new gojs.Binding("location", "loc", gojs.Point.parse).makeTwoWay(gojs.Point.stringify),
 			{
-				locationSpot: gojs.Spot.Center,
-				mouseEnter: function (e, obj) { showPorts(obj.part, true); },
-				mouseLeave: function (e, obj) { showPorts(obj.part, false); }
+				locationSpot: gojs.Spot.Center
 			}
 		];
 	}
@@ -273,7 +343,7 @@ function shareworksWorkFlow(options) {
 		return null;
 	}
 
-	function makePort(name, spot, output, input) {
+	/*function makePort(name, spot, output, input) {
 		return s(gojs.Shape, "Circle", 
 			{
 				fill: "transparent",
@@ -289,9 +359,9 @@ function shareworksWorkFlow(options) {
 				cursor: "pointer"
 			}
 		);
-	}
+	}*/
 
-	function showPorts(node, show) {
+	/*function showPorts(node, show) {
 		var diagram = node.diagram;
 		if (!diagram || diagram.isReadOnly || !diagram.allowLink)  {
 			return;
@@ -300,7 +370,7 @@ function shareworksWorkFlow(options) {
 			port.fill = (show ? lineStyle.portColor : "transparent");
 			port.stroke = (show ? lineStyle.portColor : null);
 		});
-	}
+	}*/
 	// 构造路径
 	function createPath(key, pathTree, path, allPaths, allKeys) {
 		if (allKeys.indexOf(key)  < 0) {
@@ -347,46 +417,78 @@ function shareworksWorkFlow(options) {
 	myDiagram.linkTemplate = s(
 		gojs.Link,
 		{
-			routing: gojs.Link.AvoidsNodes,
-			curve: gojs.Link.JumpOver,
-			corner: 5, toShortLength: 4,
-			relinkableFrom: true,
-			relinkableTo: true,
-			reshapable: true,
-			resegmentable: true,
-			mouseEnter: function(e, link) { link.findObject("HIGHLIGHT").stroke = "rgba(30,144,255,0.2)"; },
-			mouseLeave: function(e, link) { link.findObject("HIGHLIGHT").stroke = "transparent"; }
+			routing: gojs.Link.Normal,
+			selectable: false
 		},
-		new gojs.Binding("points").makeTwoWay(),
-		s(
-			gojs.Shape,
-			{ 
-				isPanelMain: true, 
-				strokeWidth: lineStyle.size * 2, 
-				stroke: "transparent", 
-				name: "HIGHLIGHT" 
-			}
-		),
 		s(
 			gojs.Shape,
 			{
-				isPanelMain: true, 
+				isPanelMain: true,
 				stroke: lineStyle.color, 
 				strokeWidth: lineStyle.size 
 			}
 		),
 		s(
 			gojs.Shape,
-			{
+			{ 
 				toArrow: "standard", 
-				stroke: lineStyle.color,
-				strokeWidth: lineStyle.size,
-				fill: lineStyle.color
+				stroke: null, 
+				fill: "gray"
 			}
-		)
+		),
+		s(
+			gojs.Panel, 
+			"Auto",
+			{
+				click: buttonAddNode,
+				cursor: "pointer",
+				segmentIndex: 0
+			},
+			s(
+				gojs.Shape, 
+				"CircleLine",
+				{ 
+					strokeWidth: 1, 
+					stroke: "#888", 
+					width: 12, 
+					height: 12 
+				}
+			),
+			s(
+				gojs.Shape,
+				{ 
+					strokeWidth: 1,
+					stroke: "#888",
+					geometry: gojs.Geometry.parse(icons.plus),
+					width: 9,
+					height: 9
+				}
+			),
+			new gojs.Binding("segmentFraction", "", setSegmentFraction)
+		)		
 	);
+	
+	/*function setSegmentIndex(data) {
+		var fromKey = data.from;
+		var fromNode = myDiagram.findNodeForKey(fromKey);
+		if (fromNode.category == "start") {
+			return 0;
+		} else {
+			return 0;
+		}
+	}*/
+
+	function setSegmentFraction(data) {
+		var fromKey = data.from;
+		var fromNode = myDiagram.findNodeForKey(fromKey);
+		if (fromNode.category == "start") {
+			return 0.3;
+		} else {
+			return 0.7;
+		}
+	}
 	//初始化双击操作
-	myDiagram.addDiagramListener("ObjectDoubleClicked", function(ev) {
+	/*myDiagram.addDiagramListener("ObjectDoubleClicked", function(ev) {
 		var part = ev.subject.part;
 		if (!part.data.customData) {
 			var initData = {};
@@ -396,7 +498,34 @@ function shareworksWorkFlow(options) {
 			part.data.customData = initData;
 		}
 		showEditNode(part, part.data.customData);
-	});
+	});*/
+	//点击事件
+	function buttonAddNode(e, port) {
+		var linkNode = port.part;
+		var linkNodeData = linkNode.data;
+		e = null;
+		showAddNode(linkNodeData);
+		
+    }
+	//设置节点
+	function buttonSetNode(e, port) {
+		e = null;
+		var node = port.part;
+		if (!node.data.customData) {
+			var initData = {};
+			for (var key in initNodeData) {
+				initData[key] = initNodeData[key];
+			}
+			node.data.customData = initData;
+		}
+		showEditNode(node, node.data.customData);
+	}
+	//删除节点
+	function buttonRemoveNode(e, port) {
+		var node = port.part;
+		e = null;
+		showRemoveNode(node);
+	}
 	
 	return {
 		saveNodeData: function(node, data) {
@@ -422,6 +551,7 @@ function shareworksWorkFlow(options) {
 			};
 		},
 		renderDiagram: function(data) {
+			nodeKey = -1;
 			if (!data) {
 				return;
 			}
@@ -437,6 +567,129 @@ function shareworksWorkFlow(options) {
 			modeJsonData.nodeDataArray = data.nodeDataArray;
 			modeJsonData.linkDataArray = data.linkDataArray;
 			myDiagram.model = gojs.Model.fromJson(data);
+		},
+		addNode: function(category, linkNodeData, nodeData) {
+			if (category == "normal" || category == "branch") {
+				var fromNodeKey = linkNodeData.from;
+				var toNodeKey = linkNodeData.to;
+				var linkDataArray = myDiagram.model.linkDataArray;
+				var nodeDataArray = myDiagram.model.nodeDataArray;
+				var isEndNode = false;
+				for (var idx in nodeDataArray) {
+					var entity = nodeDataArray[idx];
+					if (entity.key == toNodeKey && entity.category == "end") {
+						isEndNode = true;
+						break;
+					}
+				}
+				var nextToNodeKey = 0;
+				for (var linkIdx in linkDataArray) {
+					var linkEntity = linkDataArray[linkIdx];
+					if (linkEntity.from == toNodeKey) {
+						nextToNodeKey = linkEntity.to;
+						break;
+					}
+				}
+				if (isEndNode) {
+					category = "normal";
+				}
+				//添加一个Node
+				myDiagram.startTransaction("make new node");
+				nodeData = nodeData ? nodeData : {};
+				nodeData.key = nodeKey;
+				nodeData.category = "node";
+				myDiagram.model.addNodeData(nodeData);
+				myDiagram.commitTransaction("make new node");
+				if (category == "normal") {
+					//删除原有链接
+					myDiagram.startTransaction("remove link");
+					myDiagram.model.removeLinkData(linkNodeData);
+					myDiagram.commitTransaction("remove link");
+					//重新建立链接
+					myDiagram.startTransaction("make new link");
+					myDiagram.model.addLinkData({from: fromNodeKey, to: nodeKey});
+					myDiagram.commitTransaction("make new link");
+					myDiagram.startTransaction("make new link");
+					myDiagram.model.addLinkData({from: nodeKey, to: toNodeKey});
+					myDiagram.commitTransaction("make new link");
+				} else {
+					myDiagram.startTransaction("make new link");
+					myDiagram.model.addLinkData({from: fromNodeKey, to: nodeKey});
+					myDiagram.commitTransaction("make new link");
+					myDiagram.startTransaction("make new link");
+					myDiagram.model.addLinkData({from: nodeKey, to: nextToNodeKey});
+					myDiagram.commitTransaction("make new link");
+				}
+				nodeKey = nodeKey - 1;
+			}
+		},
+		removeNode: function(node) {
+			var nodeDataArray = myDiagram.model.nodeDataArray;
+			var nodeCount = 0;
+			for (var rmIdx in nodeDataArray) {
+				var nodeEntity = nodeDataArray[rmIdx];
+				if (nodeEntity.category == "node") {
+					nodeCount++;
+				}
+			}
+			if (nodeCount === 1) {
+				return {
+					code: 11,
+					message: "不能删除，必须包含一个节点"
+				};
+			}
+			var nodeKey = node.data.key;
+			var linkDataArray = myDiagram.model.linkDataArray;
+			//get from and to node key
+			var fromNodeKey = 0;
+			var toNodeKey = 0;
+			var fromLinkData = null;
+			var toLinkData = null;
+			var pathTree = {};
+			for (var idx in linkDataArray) {
+				var entity = linkDataArray[idx];
+				var from = entity.from;
+				var to = entity.to;
+				if (from === nodeKey) {
+					toNodeKey = to;
+					toLinkData = entity;
+				}
+				if (to === nodeKey) {
+					fromNodeKey = from;
+					fromLinkData = entity;
+				}
+				if (!pathTree[from]) {
+					pathTree[from] = [];
+				}
+				pathTree[from].push(to);
+			}
+			//获取所有路径
+			var finalAllPaths = [];
+			var finalAllKeys = [];
+			createPath(fromNodeKey, pathTree, fromNodeKey, finalAllPaths, finalAllKeys);
+			var pathCount = 0;
+			for (var i in finalAllPaths) {
+				var path = finalAllPaths[i];
+				if (path.indexOf(fromNodeKey) > -1 && path.indexOf(toNodeKey) > -1) {
+					pathCount++;
+				}
+			}
+			//删除节点
+			myDiagram.startTransaction("remove node");
+			myDiagram.model.removeNodeData(node.data);
+			myDiagram.commitTransaction("remove node");
+			myDiagram.startTransaction("remove link");
+			myDiagram.model.removeLinkData(fromLinkData);
+			myDiagram.commitTransaction("remove link");
+			myDiagram.startTransaction("remove link");
+			myDiagram.model.removeLinkData(toLinkData);
+			myDiagram.commitTransaction("remove link");
+			if(pathCount === 1) {
+				myDiagram.startTransaction("make new link");
+				myDiagram.model.addLinkData({from: fromNodeKey, to: toNodeKey});
+				myDiagram.commitTransaction("make new link");
+			} 
+			return null;
 		}
 	};
 }

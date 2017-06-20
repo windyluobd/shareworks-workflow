@@ -85,6 +85,27 @@ var myDiagram = shareworksDiagram.createDiagram({
 			label: "新增节点",
 			text: displayInfo
 		};
+	},
+	showAddNode: function(linkNodeData) {
+		var nodeData = {
+			"label": "测试节点" + Math.random(),
+			"info": ["dasdsa", "12312321"],
+			"customData": {
+				approveType: 1,
+				approver: 2,
+				condition: {},
+				msgTemplateId: [1, 2]
+			}
+		};
+		var nodeStyle = document.getElementById("nodeStyle").value;  
+		myDiagram.addNode(nodeStyle, linkNodeData, nodeData);
+	},
+	showRemoveNode: function(node) {
+		alert("remove node");
+		var result = myDiagram.removeNode(node);
+		if (result) {
+			alert(result.message);
+		}
 	}
 });
 
@@ -92,7 +113,7 @@ var initData = {
 	nodeDataArray: [
 		{
 			"category": "start",
-			"label": "发起1", 
+			"label": "开始节点", 
 			"key": 1, 
 			"loc": "-114.734375 -310",
 			"info": ["dasdsa", "12312321"],
@@ -105,9 +126,9 @@ var initData = {
 		},
 		{
 			"category": "node",
-			"label": "发起2", 
+			"label": "测试节点1", 
 			"key": 10, 
-			"loc":"-227.734375 -153",
+			"loc":"-114.734375 -153",
 			"info": ["dasd1231sa", "213122222"],
 			"customData": {
 				approveType: 2,
@@ -115,12 +136,50 @@ var initData = {
 				condition: {},
 				msgTemplateId: [3, 5]
 			} 
+		},
+		{
+			"category": "node",
+			"label": "测试节点2", 
+			"key": 13, 
+			"loc":"-214.734375 -153",
+			"info": ["dasd1231sa", "213122222"],
+			"customData": {
+				approveType: 2,
+				approver: 3,
+				condition: {},
+				msgTemplateId: [3, 5]
+			} 
+		},
+		{
+			"category": "end",
+			"label": "结束", 
+			"key": 12, 
+			"loc": "-114.734375 -5",
+			"info": ["dasdsa", "12312321"],
+			"customData": {
+				approveType: 1,
+				approver: 2,
+				condition: {},
+				msgTemplateId: [1, 2]
+			} 
 		}
 	],
 	linkDataArray: [
 		{
 			"from": 1,
 			"to": 10
+		},
+		{
+			"from": 10,
+			"to": 12
+		},
+		{
+			"from": 1,
+			"to": 13
+		},
+		{
+			"from": 13,
+			"to": 12
 		}
 	]
 };
