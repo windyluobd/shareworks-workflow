@@ -14,7 +14,7 @@ function shareworksWorkFlow(options) {
 	var diagramId = options.diagram;
 	//init palette info
 	var paletteInfo = options.palette;
-	var paletteId = paletteInfo.id;
+	// var paletteId = paletteInfo.id;
 	//init node data
 	var initNodeData = options.initNodeData;
 	//defined show edit node
@@ -124,7 +124,7 @@ function shareworksWorkFlow(options) {
 								}
 							),
 							new gojs.Binding("margin", "category", function(val) { 
-								if (val == "node") {
+								if (val == "node" || val == "end") {
 									return new gojs.Margin(0, 15, 0, 0);
 								}
 							})
@@ -150,7 +150,27 @@ function shareworksWorkFlow(options) {
 								new gojs.Binding("visible", "category", function(val) { return val == "node"; })
 							)
 						),
-						
+						s(
+							gojs.Panel, 
+							"Auto",
+							{
+								click: buttonAddEndNode,
+								alignment: gojs.Spot.MiddleRight,
+								row: 0,
+								cursor: "pointer"
+							},
+							s(
+								gojs.Shape,
+								{
+									strokeWidth: 1,
+									stroke: "#888",
+									geometry: gojs.Geometry.parse(icons.plus),
+									width: 13,
+									height: 13
+								},
+								new gojs.Binding("visible", "category", function(val) { return val == "end"; })
+							)
+						),
 						// header
 						s(
 							gojs.TextBlock,
@@ -204,11 +224,11 @@ function shareworksWorkFlow(options) {
 
 	
 	//init my controller
-	s(gojs.Palette, paletteId, {
+	/*s(gojs.Palette, paletteId, {
 		"animationManager.duration": 1,
 		nodeTemplateMap: myDiagram.nodeTemplateMap,
 		model: new gojs.GraphLinksModel(modeList)
-	});
+	});*/
 
 	//node style
 	function nodeStyle() {
@@ -482,9 +502,9 @@ function shareworksWorkFlow(options) {
 		var fromKey = data.from;
 		var fromNode = myDiagram.findNodeForKey(fromKey);
 		if (fromNode.category == "start") {
-			return 0.3;
-		} else {
 			return 0.7;
+		} else {
+			return 0.3;
 		}
 	}
 	//初始化双击操作
@@ -505,8 +525,13 @@ function shareworksWorkFlow(options) {
 		var linkNodeData = linkNode.data;
 		e = null;
 		showAddNode(linkNodeData);
-		
     }
+
+	function buttonAddEndNode(e, port) {
+		e = null;
+		var node = port.part;
+		showAddNode(node, "endNode");
+	}
 	//设置节点
 	function buttonSetNode(e, port) {
 		e = null;
@@ -623,6 +648,40 @@ function shareworksWorkFlow(options) {
 				nodeKey = nodeKey - 1;
 			}
 		},
+		addEndNode: function(endNode, nodeData) {
+			var linkDataArray = myDiagram.model.linkDataArray;
+			var linkDataList = [];
+			var endNodeKey = endNode.data.key;
+			for (var linkIdx in linkDataArray) {
+				var linkEntity = linkDataArray[linkIdx];
+				if (linkEntity.to == endNodeKey) {
+					linkDataList.push({
+						from: linkEntity.from,
+						linkData: linkEntity
+					});
+				}
+			}
+			//添加一个Node
+			nodeData = nodeData ? nodeData : {};
+			nodeData.key = nodeKey;
+			nodeData.category = "node";
+			myDiagram.startTransaction("make new node");
+			myDiagram.model.addNodeData(nodeData);
+			myDiagram.commitTransaction("make new node");
+			myDiagram.startTransaction("make new link");
+			myDiagram.model.addLinkData({from: nodeKey, to: endNodeKey});
+			myDiagram.commitTransaction("make new link");
+			for (var idx in linkDataList) {
+				var linkNodeEntity = linkDataList[idx];
+				myDiagram.startTransaction("remove link");
+				myDiagram.model.removeLinkData(linkNodeEntity.linkData);
+				myDiagram.commitTransaction("remove link");
+				myDiagram.startTransaction("make new link");
+				myDiagram.model.addLinkData({from: linkNodeEntity.from, to: nodeKey});
+				myDiagram.commitTransaction("make new link");
+			}
+			nodeKey = nodeKey - 1;
+		},
 		removeNode: function(node) {
 			var nodeDataArray = myDiagram.model.nodeDataArray;
 			var nodeCount = 0;
@@ -640,55 +699,101 @@ function shareworksWorkFlow(options) {
 			}
 			var nodeKey = node.data.key;
 			var linkDataArray = myDiagram.model.linkDataArray;
-			//get from and to node key
-			var fromNodeKey = 0;
-			var toNodeKey = 0;
-			var fromLinkData = null;
-			var toLinkData = null;
+			//from node keys
+			var fromNodeList = [];
+			//to node keys
+			var toNodeList = [];
+			//path tree
 			var pathTree = {};
 			for (var idx in linkDataArray) {
 				var entity = linkDataArray[idx];
 				var from = entity.from;
 				var to = entity.to;
 				if (from === nodeKey) {
-					toNodeKey = to;
-					toLinkData = entity;
+					toNodeList.push({
+						to: to,
+						linkData: entity
+					});
 				}
 				if (to === nodeKey) {
-					fromNodeKey = from;
-					fromLinkData = entity;
+					fromNodeList.push({
+						from: from,
+						linkData: entity
+					});
 				}
 				if (!pathTree[from]) {
 					pathTree[from] = [];
 				}
 				pathTree[from].push(to);
 			}
-			//获取所有路径
-			var finalAllPaths = [];
-			var finalAllKeys = [];
-			createPath(fromNodeKey, pathTree, fromNodeKey, finalAllPaths, finalAllKeys);
-			var pathCount = 0;
-			for (var i in finalAllPaths) {
-				var path = finalAllPaths[i];
-				if (path.indexOf(fromNodeKey) > -1 && path.indexOf(toNodeKey) > -1) {
-					pathCount++;
+			if (fromNodeList.length > 1 && toNodeList.length > 1) {
+				return {
+					code: 12,
+					message: "不能删除，节点为多条路径节点"
+				};
+			}
+			if (toNodeList.length === 1) {
+				var toLinkDataEntity = toNodeList[0];
+				var toNodeKey = toLinkDataEntity.to;
+				var toLinkData = toLinkDataEntity.linkData;
+				var removeToLinkTag = false;
+				var removeNodeTag = false;
+				for (var i in  fromNodeList) {
+					var fromEntity = fromNodeList[i];
+					var fromNodeKey = fromEntity.from;
+					var fromLinkData = fromEntity.linkData;
+					var finalAllPaths = [];
+					var finalAllKeys = [];
+					createPath(fromNodeKey, pathTree, fromNodeKey, finalAllPaths, finalAllKeys);
+					var pathCount = 0;
+					for (var pathIdx in finalAllPaths) {
+						var path = finalAllPaths[pathIdx];
+						if (path.indexOf(fromNodeKey) > -1 && path.indexOf(toNodeKey) > -1) {
+							pathCount++;
+						}
+					}
+					//删除节点
+					if (!removeNodeTag) {
+						myDiagram.startTransaction("remove node");
+						myDiagram.model.removeNodeData(node.data);
+						myDiagram.commitTransaction("remove node");
+					}
+					myDiagram.startTransaction("remove link");
+					myDiagram.model.removeLinkData(fromLinkData);
+					myDiagram.commitTransaction("remove link");
+					if (!removeToLinkTag) {
+						myDiagram.startTransaction("remove link");
+						myDiagram.model.removeLinkData(toLinkData);
+						myDiagram.commitTransaction("remove link");
+						removeToLinkTag = true;
+					}
+					if(pathCount === 1) {
+						myDiagram.startTransaction("make new link");
+						myDiagram.model.addLinkData({from: fromNodeKey, to: toNodeKey});
+						myDiagram.commitTransaction("make new link");
+					}
+				}
+			} else {
+				var fromLinkDataEntity = fromNodeList[0];
+				//删除节点
+				myDiagram.startTransaction("remove node");
+				myDiagram.model.removeNodeData(node.data);
+				myDiagram.commitTransaction("remove node");
+				//删除fromLinkData
+				myDiagram.startTransaction("remove link");
+				myDiagram.model.removeLinkData(fromLinkDataEntity.linkData);
+				myDiagram.commitTransaction("remove link");
+				for (var j in toNodeList) {
+					var toNodeEntity = toNodeList[j];
+					//remove to link Data
+					myDiagram.startTransaction("remove link");
+					myDiagram.model.removeLinkData(toNodeEntity.linkData);
+					myDiagram.commitTransaction("remove link");
+					myDiagram.startTransaction("make new link");
+					myDiagram.model.addLinkData({from: fromLinkDataEntity.from, to: toNodeEntity.to});
+					myDiagram.commitTransaction("make new link");
 				}
 			}
-			//删除节点
-			myDiagram.startTransaction("remove node");
-			myDiagram.model.removeNodeData(node.data);
-			myDiagram.commitTransaction("remove node");
-			myDiagram.startTransaction("remove link");
-			myDiagram.model.removeLinkData(fromLinkData);
-			myDiagram.commitTransaction("remove link");
-			myDiagram.startTransaction("remove link");
-			myDiagram.model.removeLinkData(toLinkData);
-			myDiagram.commitTransaction("remove link");
-			if(pathCount === 1) {
-				myDiagram.startTransaction("make new link");
-				myDiagram.model.addLinkData({from: fromNodeKey, to: toNodeKey});
-				myDiagram.commitTransaction("make new link");
-			} 
 			return null;
 		}
 	};

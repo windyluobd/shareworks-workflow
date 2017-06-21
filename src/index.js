@@ -2,7 +2,6 @@ import shareworksDiagram from '../dist/main.js';
 var myDiagram = shareworksDiagram.createDiagram({
 	diagram: "myDiagramDiv",
 	palette: {
-		id: "myPaletteDiv",
 		lineStyle: {
 			color: '#F2F0FA',
 			size: 2,
@@ -86,7 +85,7 @@ var myDiagram = shareworksDiagram.createDiagram({
 			text: displayInfo
 		};
 	},
-	showAddNode: function(linkNodeData) {
+	showAddNode: function(objData, category) {
 		var nodeData = {
 			"label": "测试节点" + Math.random(),
 			"info": ["dasdsa", "12312321"],
@@ -97,8 +96,14 @@ var myDiagram = shareworksDiagram.createDiagram({
 				msgTemplateId: [1, 2]
 			}
 		};
-		var nodeStyle = document.getElementById("nodeStyle").value;  
-		myDiagram.addNode(nodeStyle, linkNodeData, nodeData);
+		if (category == "endNode") {
+			alert("add end node");
+			myDiagram.addEndNode(objData, nodeData);
+		} else {
+			alert("add node");
+			var nodeStyle = document.getElementById("nodeStyle").value;  
+			myDiagram.addNode(nodeStyle, objData, nodeData);
+		}
 	},
 	showRemoveNode: function(node) {
 		alert("remove node");
